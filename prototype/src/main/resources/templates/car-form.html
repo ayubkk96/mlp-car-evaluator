@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Car Evaluation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; max-width: 720px; }
+        .card { padding: 1.25rem; border: 1px solid #ddd; border-radius: 12px; }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
+        select, button { width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid #ccc; }
+        button { cursor: pointer; font-weight: 700; }
+        .result { margin-top: 1rem; padding: 0.9rem; border-radius: 10px; background: #f6f6f6; }
+        .hint { color: #666; font-size: 0.9rem; margin-top: 0.25rem; }
+        .preset-row { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .preset-btn { width: auto; padding: 0.55rem 0.9rem; border-radius: 10px; border: 1px solid #ccc; background: #fff; }
+        .preset-btn:hover { background: #f2f2f2; }
+    </style>
+</head>
+<body>
+
+<h1>Car Evaluation (MLP)</h1>
+
+<div class="card">
+    <div class="preset-row">
+        <button type="button" class="preset-btn"
+                onclick="applyPreset('worst')">Worst (unacc)</button>
+
+        <button type="button" class="preset-btn"
+                onclick="applyPreset('acc')">Acceptable (acc)</button>
+
+        <button type="button" class="preset-btn"
+                onclick="applyPreset('good')">Good</button>
+
+        <button type="button" class="preset-btn"
+                onclick="applyPreset('best')">Best (vgood)</button>
+    </div>
+    <form th:action="@{/evaluate}" th:object="${carForm}" method="post">
+        <div class="row">
+            <div>
+                <label>Buying price</label>
+                <select th:field="*{buying}" required>
+                    <option value="" disabled selected>Select...</option>
+                    <option value="vhigh">vhigh</option>
+                    <option value="high">high</option>
+                    <option value="med">med</option>
+                    <option value="low">low</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Maintenance</label>
+                <select th:field="*{maint}" required>
+                    <option value="" disabled selected>Select...</option>
+                    <option value="vhigh">vhigh</option>
+                    <option value="high">high</option>
+                    <option value="med">med</option>
+                    <option value="low">low</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Doors</label>
+                <select th:field="*{doors}" required>
+                    <option value="" disabled selected>Select...</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5more">5more</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Persons</label>
+                <select th:field="*{persons}" required>
+                    <option value="" disabled selected>Select...</option>
+                    <option value="2">2</option>
+                    <option value="4">4</option>
+                    <option value="more">more</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Luggage boot</label>
+                <select th:field="*{lugBoot}" required>
+                    <option value="" disabled selected>Select...</option>
+                    <option value="small">small</option>
+                    <option value="med">med</option>
+                    <option value="big">big</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Safety</label>
+                <select th:field="*{safety}" required>
+                    <option value="" disabled selected>Select...</option>
+                    <option value="low">low</option>
+                    <option value="med">med</option>
+                    <option value="high">high</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-top: 1rem;">
+            <button type="submit">Evaluate</button>
+            <div class="hint">Uses trained MLP weights + one-hot encoding (21 features).</div>
+        </div>
+    </form>
+
+    <div class="result" th:if="${predictedClass != null}">
+        <div><strong>Predicted class:</strong> <span th:text="${predictedClass}"></span></div>
+        <div><strong>Class index:</strong> <span th:text="${classIndex}"></span></div>
+    </div>
+</div>
+<script>
+    function setSelectValue(fieldName, value) {
+        const el = document.querySelector(`[name="${fieldName}"]`);
+        if (!el) return;
+        el.value = value;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function applyPreset(type) {
+        // Field names come from th:field -> buying, maint, doors, persons, lugBoot, safety
+        if (type === 'worst') {
+            setSelectValue('buying', 'vhigh');
+            setSelectValue('maint', 'vhigh');
+            setSelectValue('doors', '2');
+            setSelectValue('persons', '2');
+            setSelectValue('lugBoot', 'small');
+            setSelectValue('safety', 'low');
+        }
+
+        if (type === 'acc') {
+            // Often yields acc: high cost but safe and usable
+            setSelectValue('buying', 'high');
+            setSelectValue('maint', 'high');
+            setSelectValue('doors', '4');
+            setSelectValue('persons', '4');
+            setSelectValue('lugBoot', 'med');
+            setSelectValue('safety', 'high');
+        }
+
+        if (type === 'good') {
+            // The combo you found that returns good
+            setSelectValue('buying', 'med');
+            setSelectValue('maint', 'low');
+            setSelectValue('doors', '4');
+            setSelectValue('persons', 'more');
+            setSelectValue('lugBoot', 'small');
+            setSelectValue('safety', 'high');
+        }
+
+        if (type === 'best') {
+            setSelectValue('buying', 'low');
+            setSelectValue('maint', 'low');
+            setSelectValue('doors', '4');
+            setSelectValue('persons', 'more');
+            setSelectValue('lugBoot', 'big');
+            setSelectValue('safety', 'high');
+        }
+
+        // Optional: auto-submit after applying preset
+        // document.querySelector('form').submit();
+    }
+</script>
+</body>
+</html>
