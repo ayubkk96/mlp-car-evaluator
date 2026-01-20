@@ -20,3 +20,5 @@ RUN ./mvnw clean package -DskipTests
 
 # Expose port (Render sets PORT env var)
 EXPOSE 8080
+
+CMD ["java", "-jar", "target/*.jar"]
